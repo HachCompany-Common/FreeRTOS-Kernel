@@ -1000,7 +1000,7 @@ eTaskState eTaskGetState( TaskHandle_t xTask ) PRIVILEGED_FUNCTION;
  * filled with information about the task referenced by the handle passed using
  * the xTask parameter.
  *
- * @xGetFreeStackSpace The TaskStatus_t structure contains a member to report
+ * @param xGetFreeStackSpace The TaskStatus_t structure contains a member to report
  * the stack high water mark of the task being queried.  Calculating the stack
  * high water mark takes a relatively long time, and can make the system
  * temporarily unresponsive - so the xGetFreeStackSpace parameter is provided to
@@ -3079,7 +3079,7 @@ void vTaskSetTaskNumber( TaskHandle_t xTask,
  * to date with the actual execution time by being skipped forward by a time
  * equal to the idle period.
  */
-void vTaskStepTick( const TickType_t xTicksToJump ) PRIVILEGED_FUNCTION;
+void vTaskStepTick( TickType_t xTicksToJump ) PRIVILEGED_FUNCTION;
 
 /*
  * Only available when configUSE_TICKLESS_IDLE is set to 1.
