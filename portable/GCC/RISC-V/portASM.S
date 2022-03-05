@@ -277,14 +277,14 @@ freertos_risc_v_application_exception_handler:
     csrr t0, mcause     /* For viewing in the debugger only. */
     csrr t1, mepc       /* For viewing in the debugger only */
     csrr t2, mstatus    /* For viewing in the debugger only */
-    j freertos_risc_v_application_exception_handler
+    j .
 /*-----------------------------------------------------------*/
 
 freertos_risc_v_application_interrupt_handler:
     csrr t0, mcause     /* For viewing in the debugger only. */
     csrr t1, mepc       /* For viewing in the debugger only */
     csrr t2, mstatus    /* For viewing in the debugger only */
-    j freertos_risc_v_application_interrupt_handler
+    j .
 /*-----------------------------------------------------------*/
 
 .section .text.freertos_risc_v_exception_handler
