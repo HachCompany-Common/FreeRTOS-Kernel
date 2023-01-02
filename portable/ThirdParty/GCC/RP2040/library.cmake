@@ -6,7 +6,6 @@
 
 add_library(FreeRTOS-Kernel-Core INTERFACE)
 target_sources(FreeRTOS-Kernel-Core INTERFACE
-        ${FREERTOS_KERNEL_PATH}/croutine.c
         ${FREERTOS_KERNEL_PATH}/event_groups.c
         ${FREERTOS_KERNEL_PATH}/list.c
         ${FREERTOS_KERNEL_PATH}/queue.c
@@ -27,7 +26,8 @@ target_sources(FreeRTOS-Kernel INTERFACE
 )
 
 target_include_directories(FreeRTOS-Kernel INTERFACE
-        ${CMAKE_CURRENT_LIST_DIR}/include)
+        ${CMAKE_CURRENT_LIST_DIR}/include
+        ${FREERTOS_CONFIG_FILE_DIRECTORY})
 
 target_link_libraries(FreeRTOS-Kernel INTERFACE
         FreeRTOS-Kernel-Core

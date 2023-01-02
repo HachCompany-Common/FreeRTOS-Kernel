@@ -148,7 +148,12 @@ portSTACK_TYPE * pxPortInitialiseStack( portSTACK_TYPE * pxTopOfStack,
     thread->xDying = pdFALSE;
 
     pthread_attr_init( &xThreadAttributes );
-    pthread_attr_setstack( &xThreadAttributes, pxEndOfStack, ulStackSize );
+    iRet = pthread_attr_setstack( &xThreadAttributes, pxEndOfStack, ulStackSize );
+    if( iRet != 0 )
+    {
+        fprintf( stderr, "[WARN] pthread_attr_setstack failed with return value: %d. Default stack will be used.\n", iRet );
+        fprintf( stderr, "[WARN] Increase the stack size to PTHREAD_STACK_MIN.\n" );
+    }
 
     thread->ev = event_create();
 
@@ -325,6 +330,7 @@ portBASE_TYPE xPortSetInterruptMask( void )
 
 void vPortClearInterruptMask( portBASE_TYPE xMask )
 {
+    ( void ) xMask;
 }
 /*-----------------------------------------------------------*/
 
@@ -385,6 +391,8 @@ static void vPortSystemTickHandler( int sig )
     Thread_t * pxThreadToSuspend;
     Thread_t * pxThreadToResume;
 
+    ( void ) sig;
+
 /* uint64_t xExpectedTicks; */
 
     uxCriticalNesting++; /* Signals are blocked in this signal handler. */
@@ -424,6 +432,8 @@ void vPortThreadDying( void * pxTaskToDelete,
                        volatile BaseType_t * pxPendYield )
 {
     Thread_t * pxThread = prvGetThreadFromTask( pxTaskToDelete );
+
+    ( void ) pxPendYield;
 
     pxThread->xDying = pdTRUE;
 }
@@ -526,7 +536,7 @@ static void prvResumeThread( Thread_t * xThreadId )
 
 static void prvSetupSignalsAndSchedulerPolicy( void )
 {
-    struct sigaction sigresume, sigtick;
+    struct sigaction sigtick;
     int iRet;
 
     hMainThread = pthread_self();
