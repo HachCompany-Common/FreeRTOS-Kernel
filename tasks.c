@@ -241,10 +241,12 @@
  * the scheduler that the value should not be changed - in which case it is the
  * responsibility of whichever module is using the value to ensure it gets set back
  * to its original value when it is released. */
-#if ( configUSE_16_BIT_TICKS == 1 )
+#if ( configTICK_TYPE_WIDTH_IN_BITS == TICK_TYPE_WIDTH_16_BITS )
     #define taskEVENT_LIST_ITEM_VALUE_IN_USE    0x8000U
-#else
+#elif ( configTICK_TYPE_WIDTH_IN_BITS == TICK_TYPE_WIDTH_32_BITS )
     #define taskEVENT_LIST_ITEM_VALUE_IN_USE    0x80000000UL
+#elif ( configTICK_TYPE_WIDTH_IN_BITS == TICK_TYPE_WIDTH_64_BITS )
+    #define taskEVENT_LIST_ITEM_VALUE_IN_USE    0x8000000000000000ULL
 #endif
 
 /*
@@ -1552,7 +1554,7 @@ static void prvAddNewTaskToReadyList( TCB_t * pxNewTCB )
                         /* The priority of a task other than the currently
                          * running task is being raised.  Is the priority being
                          * raised above that of the running task? */
-                        if( uxNewPriority >= pxCurrentTCB->uxPriority )
+                        if( uxNewPriority > pxCurrentTCB->uxPriority )
                         {
                             xYieldRequired = pdTRUE;
                         }
@@ -1845,7 +1847,7 @@ static void prvAddNewTaskToReadyList( TCB_t * pxNewTCB )
                     prvAddTaskToReadyList( pxTCB );
 
                     /* A higher priority task may have just been resumed. */
-                    if( pxTCB->uxPriority >= pxCurrentTCB->uxPriority )
+                    if( pxTCB->uxPriority > pxCurrentTCB->uxPriority )
                     {
                         /* This yield may not cause the task just resumed to run,
                          * but will leave the lists in the correct state for the
@@ -1913,7 +1915,7 @@ static void prvAddNewTaskToReadyList( TCB_t * pxNewTCB )
                 {
                     /* Ready lists can be accessed so move the task from the
                      * suspended list to the ready list directly. */
-                    if( pxTCB->uxPriority >= pxCurrentTCB->uxPriority )
+                    if( pxTCB->uxPriority > pxCurrentTCB->uxPriority )
                     {
                         xYieldRequired = pdTRUE;
 
@@ -2203,9 +2205,9 @@ BaseType_t xTaskResumeAll( void )
                     listREMOVE_ITEM( &( pxTCB->xStateListItem ) );
                     prvAddTaskToReadyList( pxTCB );
 
-                    /* If the moved task has a priority higher than or equal to
-                     * the current task then a yield must be performed. */
-                    if( pxTCB->uxPriority >= pxCurrentTCB->uxPriority )
+                    /* If the moved task has a priority higher than the current
+                     * task then a yield must be performed. */
+                    if( pxTCB->uxPriority > pxCurrentTCB->uxPriority )
                     {
                         xYieldPending = pdTRUE;
                     }
@@ -5251,19 +5253,19 @@ TickType_t uxTaskResetEventItemValue( void )
 #endif /* configUSE_TASK_NOTIFICATIONS */
 /*-----------------------------------------------------------*/
 
-#if ( ( configGENERATE_RUN_TIME_STATS == 1 ) && ( INCLUDE_xTaskGetIdleTaskHandle == 1 ) )
+#if ( configGENERATE_RUN_TIME_STATS == 1 )
 
-    configRUN_TIME_COUNTER_TYPE ulTaskGetIdleRunTimeCounter( void )
+    configRUN_TIME_COUNTER_TYPE ulTaskGetRunTimeCounter( const TaskHandle_t xTask )
     {
-        return xIdleTaskHandle->ulRunTimeCounter;
+        return xTask->ulRunTimeCounter;
     }
 
 #endif
 /*-----------------------------------------------------------*/
 
-#if ( ( configGENERATE_RUN_TIME_STATS == 1 ) && ( INCLUDE_xTaskGetIdleTaskHandle == 1 ) )
+#if ( configGENERATE_RUN_TIME_STATS == 1 )
 
-    configRUN_TIME_COUNTER_TYPE ulTaskGetIdleRunTimePercent( void )
+    configRUN_TIME_COUNTER_TYPE ulTaskGetRunTimePercent( const TaskHandle_t xTask )
     {
         configRUN_TIME_COUNTER_TYPE ulTotalTime, ulReturn;
 
@@ -5275,7 +5277,7 @@ TickType_t uxTaskResetEventItemValue( void )
         /* Avoid divide by zero errors. */
         if( ulTotalTime > ( configRUN_TIME_COUNTER_TYPE ) 0 )
         {
-            ulReturn = xIdleTaskHandle->ulRunTimeCounter / ulTotalTime;
+            ulReturn = xTask->ulRunTimeCounter / ulTotalTime;
         }
         else
         {
@@ -5285,7 +5287,27 @@ TickType_t uxTaskResetEventItemValue( void )
         return ulReturn;
     }
 
-#endif /* if ( ( configGENERATE_RUN_TIME_STATS == 1 ) && ( INCLUDE_xTaskGetIdleTaskHandle == 1 ) ) */
+#endif /* if ( configGENERATE_RUN_TIME_STATS == 1 ) */
+/*-----------------------------------------------------------*/
+
+#if ( configGENERATE_RUN_TIME_STATS == 1 )
+
+    configRUN_TIME_COUNTER_TYPE ulTaskGetIdleRunTimeCounter( void )
+    {
+        return ulTaskGetRunTimeCounter( xIdleTaskHandle );
+    }
+
+#endif
+/*-----------------------------------------------------------*/
+
+#if ( configGENERATE_RUN_TIME_STATS == 1 )
+
+    configRUN_TIME_COUNTER_TYPE ulTaskGetIdleRunTimePercent( void )
+    {
+        return ulTaskGetRunTimePercent( xIdleTaskHandle );
+    }
+
+#endif
 /*-----------------------------------------------------------*/
 
 static void prvAddCurrentTaskToDelayedList( TickType_t xTicksToWait,
