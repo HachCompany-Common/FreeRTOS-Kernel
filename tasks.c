@@ -432,7 +432,7 @@ static void prvInitialiseTaskLists( void ) PRIVILEGED_FUNCTION;
  * void prvIdleTask( void *pvParameters );
  *
  */
-static portTASK_FUNCTION_PROTO( prvIdleTask, pvParameters ) portNORETURN PRIVILEGED_FUNCTION;
+static portTASK_FUNCTION_PROTO( prvIdleTask, pvParameters ) PRIVILEGED_FUNCTION;
 
 /*
  * Utility to free all memory allocated by the scheduler to hold a TCB,
@@ -1481,7 +1481,7 @@ static void prvAddNewTaskToReadyList( TCB_t * pxNewTCB )
     {
         TCB_t const * pxTCB;
         UBaseType_t uxReturn;
-        portBASE_TYPE xSavedInterruptState;
+        UBaseType_t uxSavedInterruptState;
 
         /* RTOS ports that support interrupt nesting have the concept of a
          * maximum  system call (or maximum API call) interrupt priority.
@@ -1501,14 +1501,14 @@ static void prvAddNewTaskToReadyList( TCB_t * pxNewTCB )
          * https://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html */
         portASSERT_IF_INTERRUPT_PRIORITY_INVALID();
 
-        xSavedInterruptState = portSET_INTERRUPT_MASK_FROM_ISR();
+        uxSavedInterruptState = portSET_INTERRUPT_MASK_FROM_ISR();
         {
             /* If null is passed in here then it is the priority of the calling
              * task that is being queried. */
             pxTCB = prvGetTCBFromHandle( xTask );
             uxReturn = pxTCB->uxPriority;
         }
-        portCLEAR_INTERRUPT_MASK_FROM_ISR( xSavedInterruptState );
+        portCLEAR_INTERRUPT_MASK_FROM_ISR( uxSavedInterruptState );
 
         return uxReturn;
     }
@@ -1894,7 +1894,7 @@ static void prvAddNewTaskToReadyList( TCB_t * pxNewTCB )
     {
         BaseType_t xYieldRequired = pdFALSE;
         TCB_t * const pxTCB = xTaskToResume;
-        portBASE_TYPE xSavedInterruptStatus;
+        UBaseType_t uxSavedInterruptStatus;
 
         configASSERT( xTaskToResume );
 
@@ -1916,7 +1916,7 @@ static void prvAddNewTaskToReadyList( TCB_t * pxNewTCB )
          * https://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html */
         portASSERT_IF_INTERRUPT_PRIORITY_INVALID();
 
-        xSavedInterruptStatus = portSET_INTERRUPT_MASK_FROM_ISR();
+        uxSavedInterruptStatus = portSET_INTERRUPT_MASK_FROM_ISR();
         {
             if( prvTaskIsTaskSuspended( pxTCB ) != pdFALSE )
             {
@@ -1957,7 +1957,7 @@ static void prvAddNewTaskToReadyList( TCB_t * pxNewTCB )
                 mtCOVERAGE_TEST_MARKER();
             }
         }
-        portCLEAR_INTERRUPT_MASK_FROM_ISR( xSavedInterruptStatus );
+        portCLEAR_INTERRUPT_MASK_FROM_ISR( uxSavedInterruptStatus );
 
         return xYieldRequired;
     }
@@ -2211,7 +2211,7 @@ BaseType_t xTaskResumeAll( void )
                  * appropriate ready list. */
                 while( listLIST_IS_EMPTY( &xPendingReadyList ) == pdFALSE )
                 {
-                    pxTCB = listGET_OWNER_OF_HEAD_ENTRY( ( &xPendingReadyList ) ); /*lint !e9079 void * is used as this macro is used with timers too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
+                    pxTCB = listGET_OWNER_OF_HEAD_ENTRY( ( &xPendingReadyList ) ); /*lint !e9079 void * is used as this macro is used with timers and co-routines too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
                     listREMOVE_ITEM( &( pxTCB->xEventListItem ) );
                     portMEMORY_BARRIER();
                     listREMOVE_ITEM( &( pxTCB->xStateListItem ) );
@@ -2315,7 +2315,7 @@ TickType_t xTaskGetTickCount( void )
 TickType_t xTaskGetTickCountFromISR( void )
 {
     TickType_t xReturn;
-    portBASE_TYPE xSavedInterruptStatus;
+    UBaseType_t uxSavedInterruptStatus;
 
     /* RTOS ports that support interrupt nesting have the concept of a maximum
      * system call (or maximum API call) interrupt priority.  Interrupts that are
@@ -2333,11 +2333,11 @@ TickType_t xTaskGetTickCountFromISR( void )
      * link: https://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html */
     portASSERT_IF_INTERRUPT_PRIORITY_INVALID();
 
-    xSavedInterruptStatus = portTICK_TYPE_SET_INTERRUPT_MASK_FROM_ISR();
+    uxSavedInterruptStatus = portTICK_TYPE_SET_INTERRUPT_MASK_FROM_ISR();
     {
         xReturn = xTickCount;
     }
-    portTICK_TYPE_CLEAR_INTERRUPT_MASK_FROM_ISR( xSavedInterruptStatus );
+    portTICK_TYPE_CLEAR_INTERRUPT_MASK_FROM_ISR( uxSavedInterruptStatus );
 
     return xReturn;
 }
@@ -2379,11 +2379,11 @@ char * pcTaskGetName( TaskHandle_t xTaskToQuery ) /*lint !e971 Unqualified char 
 
         if( listCURRENT_LIST_LENGTH( pxList ) > ( UBaseType_t ) 0 )
         {
-            listGET_OWNER_OF_NEXT_ENTRY( pxFirstTCB, pxList ); /*lint !e9079 void * is used as this macro is used with timers too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
+            listGET_OWNER_OF_NEXT_ENTRY( pxFirstTCB, pxList ); /*lint !e9079 void * is used as this macro is used with timers and co-routines too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
 
             do
             {
-                listGET_OWNER_OF_NEXT_ENTRY( pxNextTCB, pxList ); /*lint !e9079 void * is used as this macro is used with timers too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
+                listGET_OWNER_OF_NEXT_ENTRY( pxNextTCB, pxList ); /*lint !e9079 void * is used as this macro is used with timers and co-routines too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
 
                 /* Check each character in the name looking for a match or
                  * mismatch. */
@@ -2832,7 +2832,7 @@ BaseType_t xTaskIncrementTick( void )
                      * item at the head of the delayed list.  This is the time
                      * at which the task at the head of the delayed list must
                      * be removed from the Blocked state. */
-                    pxTCB = listGET_OWNER_OF_HEAD_ENTRY( pxDelayedTaskList ); /*lint !e9079 void * is used as this macro is used with timers too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
+                    pxTCB = listGET_OWNER_OF_HEAD_ENTRY( pxDelayedTaskList ); /*lint !e9079 void * is used as this macro is used with timers and co-routines too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
                     xItemValue = listGET_LIST_ITEM_VALUE( &( pxTCB->xStateListItem ) );
 
                     if( xConstTickCount < xItemValue )
@@ -3015,18 +3015,18 @@ BaseType_t xTaskIncrementTick( void )
     {
         TCB_t * pxTCB;
         TaskHookFunction_t xReturn;
-        portBASE_TYPE xSavedInterruptStatus;
+        UBaseType_t uxSavedInterruptStatus;
 
         /* If xTask is NULL then set the calling task's hook. */
         pxTCB = prvGetTCBFromHandle( xTask );
 
         /* Save the hook function in the TCB.  A critical section is required as
          * the value can be accessed from an interrupt. */
-        xSavedInterruptStatus = portSET_INTERRUPT_MASK_FROM_ISR();
+        uxSavedInterruptStatus = portSET_INTERRUPT_MASK_FROM_ISR();
         {
             xReturn = pxTCB->pxTaskTag;
         }
-        portCLEAR_INTERRUPT_MASK_FROM_ISR( xSavedInterruptStatus );
+        portCLEAR_INTERRUPT_MASK_FROM_ISR( uxSavedInterruptStatus );
 
         return xReturn;
     }
@@ -3120,7 +3120,7 @@ void vTaskSwitchContext( void )
 
         /* Select a new task to run using either the generic C or port
          * optimised asm code. */
-        taskSELECT_HIGHEST_PRIORITY_TASK(); /*lint !e9079 void * is used as this macro is used with timers too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
+        taskSELECT_HIGHEST_PRIORITY_TASK(); /*lint !e9079 void * is used as this macro is used with timers and co-routines too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
         traceTASK_SWITCHED_IN();
 
         /* After the new task is switched in, update the global errno. */
@@ -3245,7 +3245,7 @@ BaseType_t xTaskRemoveFromEventList( const List_t * const pxEventList )
      *
      * This function assumes that a check has already been made to ensure that
      * pxEventList is not empty. */
-    pxUnblockedTCB = listGET_OWNER_OF_HEAD_ENTRY( pxEventList ); /*lint !e9079 void * is used as this macro is used with timers too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
+    pxUnblockedTCB = listGET_OWNER_OF_HEAD_ENTRY( pxEventList ); /*lint !e9079 void * is used as this macro is used with timers and co-routines too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
     configASSERT( pxUnblockedTCB );
     listREMOVE_ITEM( &( pxUnblockedTCB->xEventListItem ) );
 
@@ -3309,7 +3309,7 @@ void vTaskRemoveFromUnorderedEventList( ListItem_t * pxEventListItem,
 
     /* Remove the event list form the event flag.  Interrupts do not access
      * event flags. */
-    pxUnblockedTCB = listGET_LIST_ITEM_OWNER( pxEventListItem ); /*lint !e9079 void * is used as this macro is used with timers too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
+    pxUnblockedTCB = listGET_LIST_ITEM_OWNER( pxEventListItem ); /*lint !e9079 void * is used as this macro is used with timers and co-routines too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
     configASSERT( pxUnblockedTCB );
     listREMOVE_ITEM( pxEventListItem );
 
@@ -3486,7 +3486,7 @@ void vTaskMissedYield( void )
  *
  */
 
-portTASK_FUNCTION( prvIdleTask, pvParameters )
+static portTASK_FUNCTION( prvIdleTask, pvParameters )
 {
     /* Stop warnings. */
     ( void ) pvParameters;
@@ -3756,7 +3756,7 @@ static void prvCheckTasksWaitingTermination( void )
         {
             taskENTER_CRITICAL();
             {
-                pxTCB = listGET_OWNER_OF_HEAD_ENTRY( ( &xTasksWaitingTermination ) ); /*lint !e9079 void * is used as this macro is used with timers too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
+                pxTCB = listGET_OWNER_OF_HEAD_ENTRY( ( &xTasksWaitingTermination ) ); /*lint !e9079 void * is used as this macro is used with timers and co-routines too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
                 ( void ) uxListRemove( &( pxTCB->xStateListItem ) );
                 --uxCurrentNumberOfTasks;
                 --uxDeletedTasksWaitingCleanUp;
@@ -3885,7 +3885,7 @@ static void prvCheckTasksWaitingTermination( void )
 
         if( listCURRENT_LIST_LENGTH( pxList ) > ( UBaseType_t ) 0 )
         {
-            listGET_OWNER_OF_NEXT_ENTRY( pxFirstTCB, pxList ); /*lint !e9079 void * is used as this macro is used with timers too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
+            listGET_OWNER_OF_NEXT_ENTRY( pxFirstTCB, pxList ); /*lint !e9079 void * is used as this macro is used with timers and co-routines too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
 
             /* Populate an TaskStatus_t structure within the
              * pxTaskStatusArray array for each task that is referenced from
@@ -3893,7 +3893,7 @@ static void prvCheckTasksWaitingTermination( void )
              * meaning of each TaskStatus_t structure member. */
             do
             {
-                listGET_OWNER_OF_NEXT_ENTRY( pxNextTCB, pxList ); /*lint !e9079 void * is used as this macro is used with timers too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
+                listGET_OWNER_OF_NEXT_ENTRY( pxNextTCB, pxList ); /*lint !e9079 void * is used as this macro is used with timers and co-routines too.  Alignment is known to be fine as the type of the pointer stored and retrieved is the same. */
                 vTaskGetInfo( ( TaskHandle_t ) pxNextTCB, &( pxTaskStatusArray[ uxTask ] ), pdTRUE, eState );
                 uxTask++;
             } while( pxNextTCB != pxFirstTCB );
@@ -5035,7 +5035,7 @@ TickType_t uxTaskResetEventItemValue( void )
         TCB_t * pxTCB;
         uint8_t ucOriginalNotifyState;
         BaseType_t xReturn = pdPASS;
-        portBASE_TYPE xSavedInterruptStatus;
+        UBaseType_t uxSavedInterruptStatus;
 
         configASSERT( xTaskToNotify );
         configASSERT( uxIndexToNotify < configTASK_NOTIFICATION_ARRAY_ENTRIES );
@@ -5060,7 +5060,7 @@ TickType_t uxTaskResetEventItemValue( void )
 
         pxTCB = xTaskToNotify;
 
-        xSavedInterruptStatus = portSET_INTERRUPT_MASK_FROM_ISR();
+        uxSavedInterruptStatus = portSET_INTERRUPT_MASK_FROM_ISR();
         {
             if( pulPreviousNotificationValue != NULL )
             {
@@ -5154,7 +5154,7 @@ TickType_t uxTaskResetEventItemValue( void )
                 }
             }
         }
-        portCLEAR_INTERRUPT_MASK_FROM_ISR( xSavedInterruptStatus );
+        portCLEAR_INTERRUPT_MASK_FROM_ISR( uxSavedInterruptStatus );
 
         return xReturn;
     }
@@ -5170,7 +5170,7 @@ TickType_t uxTaskResetEventItemValue( void )
     {
         TCB_t * pxTCB;
         uint8_t ucOriginalNotifyState;
-        portBASE_TYPE xSavedInterruptStatus;
+        UBaseType_t uxSavedInterruptStatus;
 
         configASSERT( xTaskToNotify );
         configASSERT( uxIndexToNotify < configTASK_NOTIFICATION_ARRAY_ENTRIES );
@@ -5195,7 +5195,7 @@ TickType_t uxTaskResetEventItemValue( void )
 
         pxTCB = xTaskToNotify;
 
-        xSavedInterruptStatus = portSET_INTERRUPT_MASK_FROM_ISR();
+        uxSavedInterruptStatus = portSET_INTERRUPT_MASK_FROM_ISR();
         {
             ucOriginalNotifyState = pxTCB->ucNotifyState[ uxIndexToNotify ];
             pxTCB->ucNotifyState[ uxIndexToNotify ] = taskNOTIFICATION_RECEIVED;
@@ -5245,7 +5245,7 @@ TickType_t uxTaskResetEventItemValue( void )
                 }
             }
         }
-        portCLEAR_INTERRUPT_MASK_FROM_ISR( xSavedInterruptStatus );
+        portCLEAR_INTERRUPT_MASK_FROM_ISR( uxSavedInterruptStatus );
     }
 
 #endif /* configUSE_TASK_NOTIFICATIONS */
