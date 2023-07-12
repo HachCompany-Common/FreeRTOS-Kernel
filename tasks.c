@@ -124,12 +124,12 @@
 /* uxTopReadyPriority holds the priority of the highest priority ready
  * state task. */
     #define taskRECORD_READY_PRIORITY( uxPriority ) \
-    {                                               \
+    do {                                            \
         if( ( uxPriority ) > uxTopReadyPriority )   \
         {                                           \
             uxTopReadyPriority = ( uxPriority );    \
         }                                           \
-    } /* taskRECORD_READY_PRIORITY */
+    } while( 0 ) /* taskRECORD_READY_PRIORITY */
 
 /*-----------------------------------------------------------*/
 
@@ -3843,6 +3843,18 @@ static void prvCheckTasksWaitingTermination( void )
                     }
                 }
                 #endif /* INCLUDE_vTaskSuspend */
+
+                /* Tasks can be in pending ready list and other state list at the
+                 * same time. These tasks are in ready state no matter what state
+                 * list the task is in. */
+                taskENTER_CRITICAL();
+                {
+                    if( listIS_CONTAINED_WITHIN( &xPendingReadyList, &( pxTCB->xEventListItem ) ) != pdFALSE )
+                    {
+                        pxTaskStatus->eCurrentState = eReady;
+                    }
+                }
+                taskEXIT_CRITICAL();
             }
         }
         else
