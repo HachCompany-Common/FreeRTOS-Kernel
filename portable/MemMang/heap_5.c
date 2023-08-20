@@ -120,8 +120,8 @@
  * of their memory address. */
 typedef struct A_BLOCK_LINK
 {
-    struct A_BLOCK_LINK * pxNextFreeBlock; /*<< The next free block in the list. */
-    size_t xBlockSize;                     /*<< The size of the free block. */
+    struct A_BLOCK_LINK * pxNextFreeBlock; /**< The next free block in the list. */
+    size_t xBlockSize;                     /**< The size of the free block. */
 } BlockLink_t;
 
 /*-----------------------------------------------------------*/
@@ -165,47 +165,47 @@ void * pvPortMalloc( size_t xWantedSize )
      * prvPortMalloc(). */
     configASSERT( pxEnd );
 
-    vTaskSuspendAll();
+    if( xWantedSize > 0 )
     {
-        if( xWantedSize > 0 )
+        /* The wanted size must be increased so it can contain a BlockLink_t
+         * structure in addition to the requested amount of bytes. */
+        if( heapADD_WILL_OVERFLOW( xWantedSize, xHeapStructSize ) == 0 )
         {
-            /* The wanted size must be increased so it can contain a BlockLink_t
-             * structure in addition to the requested amount of bytes. */
-            if( heapADD_WILL_OVERFLOW( xWantedSize, xHeapStructSize ) == 0 )
+            xWantedSize += xHeapStructSize;
+
+            /* Ensure that blocks are always aligned to the required number
+             * of bytes. */
+            if( ( xWantedSize & portBYTE_ALIGNMENT_MASK ) != 0x00 )
             {
-                xWantedSize += xHeapStructSize;
+                /* Byte alignment required. */
+                xAdditionalRequiredSize = portBYTE_ALIGNMENT - ( xWantedSize & portBYTE_ALIGNMENT_MASK );
 
-                /* Ensure that blocks are always aligned to the required number
-                 * of bytes. */
-                if( ( xWantedSize & portBYTE_ALIGNMENT_MASK ) != 0x00 )
+                if( heapADD_WILL_OVERFLOW( xWantedSize, xAdditionalRequiredSize ) == 0 )
                 {
-                    /* Byte alignment required. */
-                    xAdditionalRequiredSize = portBYTE_ALIGNMENT - ( xWantedSize & portBYTE_ALIGNMENT_MASK );
-
-                    if( heapADD_WILL_OVERFLOW( xWantedSize, xAdditionalRequiredSize ) == 0 )
-                    {
-                        xWantedSize += xAdditionalRequiredSize;
-                    }
-                    else
-                    {
-                        xWantedSize = 0;
-                    }
+                    xWantedSize += xAdditionalRequiredSize;
                 }
                 else
                 {
-                    mtCOVERAGE_TEST_MARKER();
+                    xWantedSize = 0;
                 }
             }
             else
             {
-                xWantedSize = 0;
+                mtCOVERAGE_TEST_MARKER();
             }
         }
         else
         {
-            mtCOVERAGE_TEST_MARKER();
+            xWantedSize = 0;
         }
+    }
+    else
+    {
+        mtCOVERAGE_TEST_MARKER();
+    }
 
+    vTaskSuspendAll();
+    {
         /* Check the block size we are trying to allocate is not so large that the
          * top bit is set.  The top bit of the block size member of the BlockLink_t
          * structure is used to determine who owns the block - the application or
@@ -253,7 +253,8 @@ void * pvPortMalloc( size_t xWantedSize )
                         pxBlock->xBlockSize = xWantedSize;
 
                         /* Insert the new block into the list of free blocks. */
-                        prvInsertBlockIntoFreeList( ( pxNewBlockLink ) );
+                        pxNewBlockLink->pxNextFreeBlock = pxPreviousBlock->pxNextFreeBlock;
+                        pxPreviousBlock->pxNextFreeBlock = pxNewBlockLink;
                     }
                     else
                     {
@@ -508,7 +509,7 @@ void vPortDefineHeapRegions( const HeapRegion_t * const pxHeapRegions )
             configASSERT( pxEnd != NULL );
 
             /* Check blocks are passed in with increasing start addresses. */
-            configASSERT( xAddress > ( size_t ) pxEnd );
+            configASSERT( ( size_t ) xAddress > ( size_t ) pxEnd );
         }
 
         /* Remember the location of the end marker in the previous region, if
@@ -517,9 +518,9 @@ void vPortDefineHeapRegions( const HeapRegion_t * const pxHeapRegions )
 
         /* pxEnd is used to mark the end of the list of free blocks and is
          * inserted at the end of the region space. */
-        xAddress = xAlignedHeap + xTotalRegionSize;
-        xAddress -= xHeapStructSize;
-        xAddress &= ~( ( size_t ) portBYTE_ALIGNMENT_MASK );
+        xAddress = xAlignedHeap + ( portPOINTER_SIZE_TYPE ) xTotalRegionSize;
+        xAddress -= ( portPOINTER_SIZE_TYPE ) xHeapStructSize;
+        xAddress &= ~( ( portPOINTER_SIZE_TYPE ) portBYTE_ALIGNMENT_MASK );
         pxEnd = ( BlockLink_t * ) xAddress;
         pxEnd->xBlockSize = 0;
         pxEnd->pxNextFreeBlock = NULL;
