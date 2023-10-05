@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.15)
 #   FREERTOS_PORT, if not specified and native port detected, uses the native compile.
 #
 # User is responsible for one library target:
-#   freertos_config ,typcially an INTERFACE library
+#   freertos_config ,typically an INTERFACE library
 #
 # DEPRECATED: FREERTOS_CONFIG_FILE_DIRECTORY - but still supported if no freertos_config defined for now.
 #             May be removed at some point in the future.
@@ -196,6 +196,7 @@ if(NOT FREERTOS_PORT)
         " SOFTUNE_MB91460                  - Compiler: Softune       Target: MB91460\n"
         " SOFTUNE_MB96340                  - Compiler: Softune       Target: MB96340\n"
         " TASKING_ARM_CM4F                 - Compiler: Tasking       Target: ARM Cortex-M4 with FPU\n"
+        " TEMPLATE                         - Compiler: HOST          Target: None\n"
         " CDK_THEAD_CK802                  - Compiler: CDK           Target: T-head CK802\n"
         " XCC_XTENSA                       - Compiler: XCC           Target: Xtensa\n"
         " WIZC_PIC18                       - Compiler: WizC          Target: PIC18")
