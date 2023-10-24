@@ -21,6 +21,9 @@ Additionally, for FreeRTOS kernel feature information refer to the
 [Developer Documentation](https://www.FreeRTOS.org/features.html),
 and [API Reference](https://www.FreeRTOS.org/a00106.html).
 
+Also for contributing and creating a Pull Request please refer to
+[the instructions here](.github/CONTRIBUTING.md#contributing-via-pull-request).
+
 ### Getting help
 
 If you have any questions or need assistance troubleshooting your FreeRTOS project,
@@ -122,7 +125,7 @@ See the readme file in the ```./portable``` directory for more information.
 - The ```./include``` directory contains the real time kernel header files.
 
 - The ```./sample_configuration``` directory contains a sample `FreeRTOSConfig.h` to help jumpstart a new project.
-See the [FreeRTOSConfig.h](sample_configuration/FreeRTOSConfig.h) file for instructions.
+See the [FreeRTOSConfig.h](examples/sample_configuration/FreeRTOSConfig.h) file for instructions.
 
 ### Code Formatting
 
