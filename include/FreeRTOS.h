@@ -365,6 +365,17 @@
     #define configPRECONDITION_DEFINED    1
 #endif
 
+#ifndef configCHECK_HANDLER_INSTALLATION
+    #define configCHECK_HANDLER_INSTALLATION    1
+#else
+
+/* The application has explicitly defined configCHECK_HANDLER_INSTALLATION
+ * to 1. The checks requires configASSERT() to be defined. */
+    #if ( ( configCHECK_HANDLER_INSTALLATION == 1 ) && ( configASSERT_DEFINED == 0 ) )
+        #error You must define configASSERT() when configCHECK_HANDLER_INSTALLATION is 1.
+    #endif
+#endif
+
 #ifndef portMEMORY_BARRIER
     #define portMEMORY_BARRIER()
 #endif
@@ -516,6 +527,10 @@
 
 #ifndef portSETUP_TCB
     #define portSETUP_TCB( pxTCB )    ( void ) ( pxTCB )
+#endif
+
+#ifndef portTASK_SWITCH_HOOK
+    #define portTASK_SWITCH_HOOK( pxTCB )    ( void ) ( pxTCB )
 #endif
 
 #ifndef configQUEUE_REGISTRY_SIZE
@@ -1886,14 +1901,20 @@
     #ifndef traceENTER_xTaskGetIdleTaskHandle
         #define traceENTER_xTaskGetIdleTaskHandle()
     #endif
-#else
-    #ifndef traceENTER_xTaskGetIdleTaskHandle
-        #define traceENTER_xTaskGetIdleTaskHandle( xCoreID )
+#endif
+
+#if ( configNUMBER_OF_CORES == 1 )
+    #ifndef traceRETURN_xTaskGetIdleTaskHandle
+        #define traceRETURN_xTaskGetIdleTaskHandle( xIdleTaskHandle )
     #endif
 #endif
 
-#ifndef traceRETURN_xTaskGetIdleTaskHandle
-    #define traceRETURN_xTaskGetIdleTaskHandle( xIdleTaskHandle )
+#ifndef traceENTER_xTaskGetIdleTaskHandleForCore
+    #define traceENTER_xTaskGetIdleTaskHandleForCore( xCoreID )
+#endif
+
+#ifndef traceRETURN_xTaskGetIdleTaskHandleForCore
+    #define traceRETURN_xTaskGetIdleTaskHandleForCore( xIdleTaskHandle )
 #endif
 
 #ifndef traceENTER_vTaskStepTick
