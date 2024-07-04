@@ -49,12 +49,6 @@
  */
 #include <stdint.h> /* READ COMMENT ABOVE. */
 
-/* *INDENT-OFF* */
-#ifdef __cplusplus
-    extern "C" {
-#endif
-/* *INDENT-ON* */
-
 /* Acceptable values for configTICK_TYPE_WIDTH_IN_BITS. */
 #define TICK_TYPE_WIDTH_16_BITS    0
 #define TICK_TYPE_WIDTH_32_BITS    1
@@ -128,6 +122,12 @@
     #include "picolibc-freertos.h"
 
 #endif /* if ( configUSE_PICOLIBC_TLS == 1 ) */
+
+/* *INDENT-OFF* */
+#ifdef __cplusplus
+    extern "C" {
+#endif
+/* *INDENT-ON* */
 
 #ifndef configUSE_C_RUNTIME_TLS_SUPPORT
     #define configUSE_C_RUNTIME_TLS_SUPPORT    0
@@ -621,6 +621,13 @@
     #define traceTASK_SWITCHED_IN()
 #endif
 
+#ifndef traceSTARTING_SCHEDULER
+
+/* Called after all idle tasks and timer task (if enabled) have been created
+ * successfully, just before the scheduler is started. */
+    #define traceSTARTING_SCHEDULER( xIdleTaskHandles )
+#endif
+
 #ifndef traceINCREASE_TICK_COUNT
 
 /* Called before stepping the tick count after waking from tickless idle
@@ -982,15 +989,15 @@
 #endif
 
 #ifndef traceSTREAM_BUFFER_CREATE_FAILED
-    #define traceSTREAM_BUFFER_CREATE_FAILED( xIsMessageBuffer )
+    #define traceSTREAM_BUFFER_CREATE_FAILED( xStreamBufferType )
 #endif
 
 #ifndef traceSTREAM_BUFFER_CREATE_STATIC_FAILED
-    #define traceSTREAM_BUFFER_CREATE_STATIC_FAILED( xReturn, xIsMessageBuffer )
+    #define traceSTREAM_BUFFER_CREATE_STATIC_FAILED( xReturn, xStreamBufferType )
 #endif
 
 #ifndef traceSTREAM_BUFFER_CREATE
-    #define traceSTREAM_BUFFER_CREATE( pxStreamBuffer, xIsMessageBuffer )
+    #define traceSTREAM_BUFFER_CREATE( pxStreamBuffer, xStreamBufferType )
 #endif
 
 #ifndef traceSTREAM_BUFFER_DELETE
@@ -999,6 +1006,10 @@
 
 #ifndef traceSTREAM_BUFFER_RESET
     #define traceSTREAM_BUFFER_RESET( xStreamBuffer )
+#endif
+
+#ifndef traceSTREAM_BUFFER_RESET_FROM_ISR
+    #define traceSTREAM_BUFFER_RESET_FROM_ISR( xStreamBuffer )
 #endif
 
 #ifndef traceBLOCKING_ON_STREAM_BUFFER_SEND
@@ -2398,7 +2409,7 @@
 #endif
 
 #ifndef traceENTER_xStreamBufferGenericCreate
-    #define traceENTER_xStreamBufferGenericCreate( xBufferSizeBytes, xTriggerLevelBytes, xIsMessageBuffer, pxSendCompletedCallback, pxReceiveCompletedCallback )
+    #define traceENTER_xStreamBufferGenericCreate( xBufferSizeBytes, xTriggerLevelBytes, xStreamBufferType, pxSendCompletedCallback, pxReceiveCompletedCallback )
 #endif
 
 #ifndef traceRETURN_xStreamBufferGenericCreate
@@ -2406,7 +2417,7 @@
 #endif
 
 #ifndef traceENTER_xStreamBufferGenericCreateStatic
-    #define traceENTER_xStreamBufferGenericCreateStatic( xBufferSizeBytes, xTriggerLevelBytes, xIsMessageBuffer, pucStreamBufferStorageArea, pxStaticStreamBuffer, pxSendCompletedCallback, pxReceiveCompletedCallback )
+    #define traceENTER_xStreamBufferGenericCreateStatic( xBufferSizeBytes, xTriggerLevelBytes, xStreamBufferType, pucStreamBufferStorageArea, pxStaticStreamBuffer, pxSendCompletedCallback, pxReceiveCompletedCallback )
 #endif
 
 #ifndef traceRETURN_xStreamBufferGenericCreateStatic
@@ -2435,6 +2446,14 @@
 
 #ifndef traceRETURN_xStreamBufferReset
     #define traceRETURN_xStreamBufferReset( xReturn )
+#endif
+
+#ifndef traceENTER_xStreamBufferResetFromISR
+    #define traceENTER_xStreamBufferResetFromISR( xStreamBuffer )
+#endif
+
+#ifndef traceRETURN_xStreamBufferResetFromISR
+    #define traceRETURN_xStreamBufferResetFromISR( xReturn )
 #endif
 
 #ifndef traceENTER_xStreamBufferSetTriggerLevel

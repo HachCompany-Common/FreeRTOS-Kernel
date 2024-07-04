@@ -40,7 +40,7 @@
 #include "task.h"
 #include "mpu_syscall_numbers.h"
 
-#ifndef __VFP_FP__
+#ifndef __ARM_FP
     #error This port can only be used when the project options are configured to enable hardware floating point support.
 #endif
 
@@ -830,7 +830,7 @@ BaseType_t xPortStartScheduler( void )
     #endif
 
     /* An application can install FreeRTOS interrupt handlers in one of the
-     * folllowing ways:
+     * following ways:
      * 1. Direct Routing - Install the functions vPortSVCHandler and
      *    xPortPendSVHandler for SVCall and PendSV interrupts respectively.
      * 2. Indirect Routing - Install separate handlers for SVCall and PendSV
