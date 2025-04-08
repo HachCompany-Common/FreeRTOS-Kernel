@@ -156,16 +156,15 @@
     #define configIDLE_TASK_NAME    "IDLE"
 #endif
 
+/* Reserve space for Core ID and null termination. */
 #if ( configNUMBER_OF_CORES > 1 )
-    /* Reserve space for Core ID and null termination. */
+    /* Multi-core systems with up to 9 cores require 1 character for core ID and 1 for null termination. */
     #if ( configMAX_TASK_NAME_LEN < 2U )
         #error Minimum required task name length is 2. Please increase configMAX_TASK_NAME_LEN.
     #endif
     #define taskRESERVED_TASK_NAME_LENGTH    2U
 
-#elif ( configNUMBER_OF_CORES > 9 )
-    #warning Please increase taskRESERVED_TASK_NAME_LENGTH. 1 character is insufficient to store the core ID.
-#else
+#else /* if ( configNUMBER_OF_CORES > 1 ) */
     /* Reserve space for null termination. */
     #if ( configMAX_TASK_NAME_LEN < 1U )
         #error Minimum required task name length is 1. Please increase configMAX_TASK_NAME_LEN.
@@ -2017,7 +2016,7 @@ static void prvInitialiseNewTask( TaskFunction_t pxTaskCode,
         pxNewTCB->xTaskRunState = taskTASK_NOT_RUNNING;
 
         /* Is this an idle task? */
-        if( ( ( TaskFunction_t ) pxTaskCode == ( TaskFunction_t ) prvIdleTask ) || ( ( TaskFunction_t ) pxTaskCode == ( TaskFunction_t ) prvPassiveIdleTask ) )
+        if( ( ( TaskFunction_t ) pxTaskCode == ( TaskFunction_t ) ( &prvIdleTask ) ) || ( ( TaskFunction_t ) pxTaskCode == ( TaskFunction_t ) ( &prvPassiveIdleTask ) ) )
         {
             pxNewTCB->uxTaskAttributes |= taskATTRIBUTE_IS_IDLE;
         }
@@ -3574,7 +3573,7 @@ static BaseType_t prvCreateIdleTasks( void )
     {
         #if ( configNUMBER_OF_CORES == 1 )
         {
-            pxIdleTaskFunction = prvIdleTask;
+            pxIdleTaskFunction = &prvIdleTask;
         }
         #else /* #if (  configNUMBER_OF_CORES == 1 ) */
         {
@@ -3583,11 +3582,11 @@ static BaseType_t prvCreateIdleTasks( void )
              * run when no other task is available to run. */
             if( xCoreID == 0 )
             {
-                pxIdleTaskFunction = prvIdleTask;
+                pxIdleTaskFunction = &prvIdleTask;
             }
             else
             {
-                pxIdleTaskFunction = prvPassiveIdleTask;
+                pxIdleTaskFunction = &prvPassiveIdleTask;
             }
         }
         #endif /* #if (  configNUMBER_OF_CORES == 1 ) */
@@ -3597,9 +3596,14 @@ static BaseType_t prvCreateIdleTasks( void )
          * only one idle task. */
         #if ( configNUMBER_OF_CORES > 1 )
         {
-            /* Append the idle task number to the end of the name. */
+            /* Append the idle task number to the end of the name.
+             *
+             * Note: Idle task name index only supports single-character
+             * core IDs (0-9). If the core ID exceeds 9, the idle task
+             * name will contain an incorrect ASCII character. This is
+             * acceptable as the task name is used mainly for debugging. */
             cIdleName[ xIdleTaskNameIndex ] = ( char ) ( xCoreID + '0' );
-            cIdleName[ xIdleTaskNameIndex + 1 ] = '\0';
+            cIdleName[ xIdleTaskNameIndex + 1U ] = '\0';
         }
         #endif /* if ( configNUMBER_OF_CORES > 1 ) */
 
@@ -6211,7 +6215,7 @@ static void prvCheckTasksWaitingTermination( void )
 
         #if ( configGENERATE_RUN_TIME_STATS == 1 )
         {
-            pxTaskStatus->ulRunTimeCounter = pxTCB->ulRunTimeCounter;
+            pxTaskStatus->ulRunTimeCounter = ulTaskGetRunTimeCounter( xTask );
         }
         #else
         {
@@ -8411,15 +8415,37 @@ TickType_t uxTaskResetEventItemValue( void )
     configRUN_TIME_COUNTER_TYPE ulTaskGetRunTimeCounter( const TaskHandle_t xTask )
     {
         TCB_t * pxTCB;
+        configRUN_TIME_COUNTER_TYPE ulTotalTime = 0, ulTimeSinceLastSwitchedIn = 0, ulTaskRunTime = 0;
 
         traceENTER_ulTaskGetRunTimeCounter( xTask );
 
         pxTCB = prvGetTCBFromHandle( xTask );
         configASSERT( pxTCB != NULL );
 
-        traceRETURN_ulTaskGetRunTimeCounter( pxTCB->ulRunTimeCounter );
+        taskENTER_CRITICAL();
+        {
+            if( taskTASK_IS_RUNNING( pxTCB ) == pdTRUE )
+            {
+                #ifdef portALT_GET_RUN_TIME_COUNTER_VALUE
+                    portALT_GET_RUN_TIME_COUNTER_VALUE( ulTotalTime );
+                #else
+                    ulTotalTime = portGET_RUN_TIME_COUNTER_VALUE();
+                #endif
 
-        return pxTCB->ulRunTimeCounter;
+                #if ( configNUMBER_OF_CORES == 1 )
+                    ulTimeSinceLastSwitchedIn = ulTotalTime - ulTaskSwitchedInTime[ 0 ];
+                #else
+                    ulTimeSinceLastSwitchedIn = ulTotalTime - ulTaskSwitchedInTime[ pxTCB->xTaskRunState ];
+                #endif
+            }
+
+            ulTaskRunTime = pxTCB->ulRunTimeCounter + ulTimeSinceLastSwitchedIn;
+        }
+        taskEXIT_CRITICAL();
+
+        traceRETURN_ulTaskGetRunTimeCounter( ulTaskRunTime );
+
+        return ulTaskRunTime;
     }
 
 #endif /* if ( configGENERATE_RUN_TIME_STATS == 1 ) */
@@ -8430,11 +8456,17 @@ TickType_t uxTaskResetEventItemValue( void )
     configRUN_TIME_COUNTER_TYPE ulTaskGetRunTimePercent( const TaskHandle_t xTask )
     {
         TCB_t * pxTCB;
-        configRUN_TIME_COUNTER_TYPE ulTotalTime, ulReturn;
+        configRUN_TIME_COUNTER_TYPE ulTotalTime, ulReturn, ulTaskRunTime;
 
         traceENTER_ulTaskGetRunTimePercent( xTask );
 
-        ulTotalTime = ( configRUN_TIME_COUNTER_TYPE ) portGET_RUN_TIME_COUNTER_VALUE();
+        ulTaskRunTime = ulTaskGetRunTimeCounter( xTask );
+
+        #ifdef portALT_GET_RUN_TIME_COUNTER_VALUE
+            portALT_GET_RUN_TIME_COUNTER_VALUE( ulTotalTime );
+        #else
+            ulTotalTime = ( configRUN_TIME_COUNTER_TYPE ) portGET_RUN_TIME_COUNTER_VALUE();
+        #endif
 
         /* For percentage calculations. */
         ulTotalTime /= ( configRUN_TIME_COUNTER_TYPE ) 100;
@@ -8445,7 +8477,7 @@ TickType_t uxTaskResetEventItemValue( void )
             pxTCB = prvGetTCBFromHandle( xTask );
             configASSERT( pxTCB != NULL );
 
-            ulReturn = pxTCB->ulRunTimeCounter / ulTotalTime;
+            ulReturn = ulTaskRunTime / ulTotalTime;
         }
         else
         {
@@ -8464,19 +8496,42 @@ TickType_t uxTaskResetEventItemValue( void )
 
     configRUN_TIME_COUNTER_TYPE ulTaskGetIdleRunTimeCounter( void )
     {
-        configRUN_TIME_COUNTER_TYPE ulReturn = 0;
+        configRUN_TIME_COUNTER_TYPE ulTotalTime = 0, ulTimeSinceLastSwitchedIn = 0, ulIdleTaskRunTime = 0;
         BaseType_t i;
 
         traceENTER_ulTaskGetIdleRunTimeCounter();
 
-        for( i = 0; i < ( BaseType_t ) configNUMBER_OF_CORES; i++ )
+        taskENTER_CRITICAL();
         {
-            ulReturn += xIdleTaskHandles[ i ]->ulRunTimeCounter;
+            #ifdef portALT_GET_RUN_TIME_COUNTER_VALUE
+                portALT_GET_RUN_TIME_COUNTER_VALUE( ulTotalTime );
+            #else
+                ulTotalTime = portGET_RUN_TIME_COUNTER_VALUE();
+            #endif
+
+            for( i = 0; i < ( BaseType_t ) configNUMBER_OF_CORES; i++ )
+            {
+                if( taskTASK_IS_RUNNING( xIdleTaskHandles[ i ] ) == pdTRUE )
+                {
+                    #if ( configNUMBER_OF_CORES == 1 )
+                        ulTimeSinceLastSwitchedIn = ulTotalTime - ulTaskSwitchedInTime[ 0 ];
+                    #else
+                        ulTimeSinceLastSwitchedIn = ulTotalTime - ulTaskSwitchedInTime[ xIdleTaskHandles[ i ]->xTaskRunState ];
+                    #endif
+                }
+                else
+                {
+                    ulTimeSinceLastSwitchedIn = 0;
+                }
+
+                ulIdleTaskRunTime += ( xIdleTaskHandles[ i ]->ulRunTimeCounter + ulTimeSinceLastSwitchedIn );
+            }
         }
+        taskEXIT_CRITICAL();
 
-        traceRETURN_ulTaskGetIdleRunTimeCounter( ulReturn );
+        traceRETURN_ulTaskGetIdleRunTimeCounter( ulIdleTaskRunTime );
 
-        return ulReturn;
+        return ulIdleTaskRunTime;
     }
 
 #endif /* if ( ( configGENERATE_RUN_TIME_STATS == 1 ) && ( INCLUDE_xTaskGetIdleTaskHandle == 1 ) ) */
@@ -8488,11 +8543,16 @@ TickType_t uxTaskResetEventItemValue( void )
     {
         configRUN_TIME_COUNTER_TYPE ulTotalTime, ulReturn;
         configRUN_TIME_COUNTER_TYPE ulRunTimeCounter = 0;
-        BaseType_t i;
 
         traceENTER_ulTaskGetIdleRunTimePercent();
 
-        ulTotalTime = portGET_RUN_TIME_COUNTER_VALUE() * configNUMBER_OF_CORES;
+        #ifdef portALT_GET_RUN_TIME_COUNTER_VALUE
+            portALT_GET_RUN_TIME_COUNTER_VALUE( ulTotalTime );
+        #else
+            ulTotalTime = ( configRUN_TIME_COUNTER_TYPE ) portGET_RUN_TIME_COUNTER_VALUE();
+        #endif
+
+        ulTotalTime *= configNUMBER_OF_CORES;
 
         /* For percentage calculations. */
         ulTotalTime /= ( configRUN_TIME_COUNTER_TYPE ) 100;
@@ -8500,11 +8560,7 @@ TickType_t uxTaskResetEventItemValue( void )
         /* Avoid divide by zero errors. */
         if( ulTotalTime > ( configRUN_TIME_COUNTER_TYPE ) 0 )
         {
-            for( i = 0; i < ( BaseType_t ) configNUMBER_OF_CORES; i++ )
-            {
-                ulRunTimeCounter += xIdleTaskHandles[ i ]->ulRunTimeCounter;
-            }
-
+            ulRunTimeCounter = ulTaskGetIdleRunTimeCounter();
             ulReturn = ulRunTimeCounter / ulTotalTime;
         }
         else
